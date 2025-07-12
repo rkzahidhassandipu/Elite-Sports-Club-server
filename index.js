@@ -177,7 +177,27 @@ async function run() {
         .send({ success: true });
     });
 
-    
+    // user booking approve
+    app.put("/bookings/approve/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const result = await CourtsBookingCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status: "approved" } }
+        );
+
+        if (result.modifiedCount > 0) {
+          res.send({ success: true, message: "Booking approved" });
+        } else {
+          res
+            .status(404)
+            .send({ success: false, message: "Booking not found" });
+        }
+      } catch (error) {
+        console.error("Approval error:", error);
+        res.status(500).send({ success: false, message: "Approval failed" });
+      }
+    });
 
     // bookings delete
     app.delete("/bookings/:id", async (req, res) => {
