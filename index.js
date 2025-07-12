@@ -3,6 +3,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const client = require("./config/db");
 const verifyToken = require("./middleware/verifyToken");
+const { ObjectId } = require("mongodb");
 
 dotenv.config();
 const app = express();
@@ -35,6 +36,27 @@ async function run() {
       } catch (error) {
         console.error("Error fetching courts:", error);
         res.status(500).send({ error: "Failed to fetch court data" });
+      }
+    });
+
+    // get userRle
+    app.get("/users/role/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+
+        const user = await userCollection.findOne({ email });
+        if (!user) {
+          return res
+            .status(404)
+            .send({ success: false, message: "User not found" });
+        }
+
+        res.send({ userRole: user.userRole || "user" }); // default to "user" if role not set
+      } catch (error) {
+        console.error("Error getting user role:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to get user role" });
       }
     });
 
@@ -156,6 +178,8 @@ async function run() {
     });
 
     
+
+    // bookings delete
     app.delete("/bookings/:id", async (req, res) => {
       try {
         const id = req.params.id;
