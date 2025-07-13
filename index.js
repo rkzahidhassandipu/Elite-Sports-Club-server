@@ -247,6 +247,52 @@ async function run() {
       }
     });
 
+
+    // get members 
+    app.get("/members", async (req, res) => {
+      try {
+        const { name } = req.query;
+        let query = {
+          userRole: "member"
+        };
+
+        if(name){
+          query.name = { $regex: name, $options: "i" };
+        }
+
+        const users = await userCollection.find(query).toArray()
+
+        res.send(users)
+
+        // const bookingEmails = await userCollection.distinct(
+        //   "userEmail",
+        //   { status: "approved" }
+        // );
+
+        // const query = { email: { $in: bookingEmails } };
+        // if (name) {
+        //   query.name = { $regex: name, $options: "i" }; // case-insensitive search
+        // }
+
+        // const members = await usersCollection.find(query).toArray();
+        // res.json(members);
+      } catch (err) {
+        res.status(500).json({ message: "Failed to fetch members." });
+      }
+    });
+
+    // DELETE /users/:id
+app.delete("/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await usersCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send({ success: result.deletedCount === 1 });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Failed to delete user" });
+  }
+});
+
+
     // pending data get by email
     app.get("/bookings", async (req, res) => {
       try {
