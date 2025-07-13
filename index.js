@@ -171,6 +171,7 @@ async function run() {
       }
     });
 
+    // payment status approved
     app.get("/bookings/approved", async (req, res) => {
       try {
         const { email, status } = req.query;
