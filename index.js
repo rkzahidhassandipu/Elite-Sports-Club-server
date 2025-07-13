@@ -360,6 +360,41 @@ async function run() {
       }
     });
 
+    // booking confirm status updated api
+    app.patch("/bookings/confirm/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { transactionId } = req.body;
+
+        const result = await CourtsBookingCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              status: "confirmed",
+              transactionId,
+              paidAt: new Date(),
+            },
+          }
+        );
+
+        if (result.modifiedCount === 0) {
+          return res
+            .status(404)
+            .json({
+              success: false,
+              message: "Booking not found or already confirmed",
+            });
+        }
+
+        res.send({ success: true, message: "Booking confirmed" });
+      } catch (error) {
+        console.error("Error confirming booking:", error);
+        res
+          .status(500)
+          .json({ success: false, message: "Internal server error" });
+      }
+    });
+
     // bookings delete
     app.delete("/bookings/:id", async (req, res) => {
       try {
