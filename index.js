@@ -364,6 +364,8 @@ async function run() {
       }
     });
 
+
+    // all booking data save db
     app.post("/bookings", async (req, res) => {
       try {
         const booking = req.body;
@@ -394,6 +396,7 @@ async function run() {
 
         const bookingData = {
           courtId: booking.courtId,
+          name: booking.name,
           date: booking.date,
           slots: booking.slots, // array of selected times
           pricePerSlot: booking.pricePerSlot,
