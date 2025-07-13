@@ -5,6 +5,8 @@ const client = require("./config/db");
 const verifyToken = require("./middleware/verifyToken");
 const { ObjectId } = require("mongodb");
 const Stripe = require("stripe");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
 dotenv.config();
 const app = express();
@@ -195,6 +197,36 @@ async function run() {
         res
           .status(500)
           .json({ success: false, message: "Failed to fetch bookings" });
+      }
+    });
+
+    //  confirmed
+    app.get("/booking/confirmed", async (req, res) => {
+      try {
+        const { email } = req.query;
+
+        if (!email) {
+          return res.status(400).json({
+            success: false,
+            message: "Email is required",
+          });
+        }
+
+        const confirmedBookings = await CourtsBookingCollection.find({
+          userEmail: email,
+          status: "confirmed",
+        }).toArray();
+
+        res.status(200).json({
+          success: true,
+          bookings: confirmedBookings,
+        });
+      } catch (error) {
+        console.error("Error fetching confirmed bookings:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch confirmed bookings",
+        });
       }
     });
 
