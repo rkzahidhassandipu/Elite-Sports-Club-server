@@ -42,7 +42,35 @@ async function run() {
       }
     });
 
-    
+    // get api by id
+    app.get("/bookings/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        if (!ObjectId.isValid(id)) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Invalid booking ID" });
+        }
+
+        const booking = await CourtsBookingCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!booking) {
+          return res
+            .status(404)
+            .json({ success: false, message: "Booking not found" });
+        }
+
+        res.json({ success: true, booking });
+      } catch (error) {
+        console.error("Error fetching booking by ID:", error);
+        res
+          .status(500)
+          .json({ success: false, message: "Failed to fetch booking" });
+      }
+    });
 
     // get user by email and show membershipDate
     app.get("/users/:email", async (req, res) => {
