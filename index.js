@@ -45,6 +45,7 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch court data" });
       }
     });
+    
 
     // get api by id
     app.get("/bookings/:id", async (req, res) => {
@@ -287,7 +288,7 @@ async function run() {
     });
 
     // payment status approved
-    app.get("/bookings/approved", async (req, res) => {
+    app.get("/approved", async (req, res) => {
       try {
         const { email, status } = req.query;
         const query = {};
