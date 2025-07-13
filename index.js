@@ -378,12 +378,10 @@ async function run() {
         );
 
         if (result.modifiedCount === 0) {
-          return res
-            .status(404)
-            .json({
-              success: false,
-              message: "Booking not found or already confirmed",
-            });
+          return res.status(404).json({
+            success: false,
+            message: "Booking not found or already confirmed",
+          });
         }
 
         res.send({ success: true, message: "Booking confirmed" });
