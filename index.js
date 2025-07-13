@@ -74,6 +74,31 @@ async function run() {
       }
     });
 
+    // get payments history
+    app.get("/payments", async (req, res) => {
+      try {
+        const { email } = req.query;
+
+        if (!email) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Email is required" });
+        }
+
+        const payments = await paymentsCollection
+          .find({ userEmail: email })
+          .sort({ paidAt: -1 }) // optional: newest payments first
+          .toArray();
+
+        res.status(200).json({ success: true, payments });
+      } catch (error) {
+        console.error("Error fetching payments:", error);
+        res
+          .status(500)
+          .json({ success: false, message: "Failed to fetch payment history" });
+      }
+    });
+
     // get user by email and show membershipDate
     app.get("/users/:email", async (req, res) => {
       try {
@@ -258,6 +283,7 @@ async function run() {
         // Validate required fields
         const requiredFields = [
           "courtId",
+          "courtName",
           "slots",
           "date",
           "pricePerSlot",
