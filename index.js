@@ -312,11 +312,12 @@ async function run() {
     app.post("/bookings", async (req, res) => {
       try {
         const booking = req.body;
+        console.log("Received booking:", booking);
 
         // Validate required fields
         const requiredFields = [
           "courtId",
-          "courtName",
+          "name",
           "slots",
           "date",
           "pricePerSlot",
