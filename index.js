@@ -126,6 +126,39 @@ async function run() {
       }
     });
 
+    // apply coupon code
+    app.get("/coupons/validate", async (req, res) => {
+      try {
+        const { code } = req.query;
+        if (!code) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Coupon code required" });
+        }
+
+        const coupon = await couponsCollection.findOne({
+          code: code.toUpperCase(),
+          isActive: true,
+        });
+
+        if (!coupon) {
+          return res
+            .status(404)
+            .json({ success: false, message: "Invalid coupon" });
+        }
+
+        res.status(200).json({
+          success: true,
+          discount: coupon.discount,
+          type: coupon.type,
+          code: coupon.code,
+        });
+      } catch (error) {
+        console.error("Coupon validation error:", error);
+        res.status(500).json({ success: false, message: "Server error" });
+      }
+    });
+
     // get userRle
     app.get("/users/role/:email", async (req, res) => {
       try {
