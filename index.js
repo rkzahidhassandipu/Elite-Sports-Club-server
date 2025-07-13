@@ -128,6 +128,36 @@ async function run() {
       }
     });
 
+    // announcements post admin
+    app.post("/announcements", async (req, res) => {
+      try {
+        const announcement = req.body;
+
+        if (!announcement.title || !announcement.message) {
+          return res.status(400).json({
+            success: false,
+            message: "Title and message are required",
+          });
+        }
+
+        const result = await announcementsCollection.insertOne(announcement);
+
+        res.status(201).json({
+          success: true,
+          message: "Announcement created",
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Error creating announcement:", error.message);
+        res.status(500).json({
+          success: false,
+          message: "Server error while creating announcement",
+        });
+      }
+    });
+
+    
+
     // apply coupon code
     app.get("/coupons/validate", async (req, res) => {
       try {
