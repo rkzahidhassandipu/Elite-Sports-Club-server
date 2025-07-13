@@ -45,7 +45,6 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch court data" });
       }
     });
-    
 
     // get api by id
     app.get("/bookings/:id", async (req, res) => {
@@ -236,6 +235,19 @@ async function run() {
       }
     });
 
+    // all user get
+    app.get("/users", async (req, res) => {
+      try {
+        const users = await usersCollection.find().toArray();
+        res.json(users);
+      } catch (err) {
+        console.error("Error fetching users:", err);
+        res
+          .status(500)
+          .json({ success: false, message: "Failed to fetch users" });
+      }
+    });
+
     // pending data get by email
     app.get("/bookings", async (req, res) => {
       try {
@@ -364,7 +376,6 @@ async function run() {
         res.status(500).send({ error: err.message });
       }
     });
-
 
     // all booking data save db
     app.post("/bookings", async (req, res) => {
