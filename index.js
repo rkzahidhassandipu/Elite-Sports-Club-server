@@ -120,21 +120,19 @@ async function run() {
       }
     });
 
-    // pending data get by email
-    app.get("/bookings", async (req, res) => {
+    // get pending, approve, conform data by email
+    app.get("/bookings/status", async (req, res) => {
       try {
         const { email, status } = req.query;
         const query = {};
 
-        if (email) {
-          query.userEmail = email;
-          query.status = "pending"; // Only user's pending bookings
-        } else if (status) {
-          query.status = status; // For admin filtering like "pending", "approved", etc.
-        } else {
+        if (email) query.userEmail = email;
+        if (status) query.status = status;
+
+        if (!email || !status) {
           return res
             .status(400)
-            .json({ success: false, message: "Email or status is required" });
+            .json({ success: false, message: "Email and status are required" });
         }
 
         const bookings = await CourtsBookingCollection.find(query).toArray();
@@ -168,33 +166,6 @@ async function run() {
         res
           .status(500)
           .send({ success: false, message: "Payment save failed" });
-      }
-    });
-
-    // payment status approved
-    app.get("/bookings/approved", async (req, res) => {
-      try {
-        const { email, status } = req.query;
-        const query = {};
-
-        if (email) {
-          query.userEmail = email;
-          query.status = "approved"; // Only user's approved bookings
-        } else if (status) {
-          query.status = status; // For admin filtering like "pending", "approved", etc.
-        } else {
-          return res
-            .status(400)
-            .json({ success: false, message: "Email or status is required" });
-        }
-
-        const bookings = await CourtsBookingCollection.find(query).toArray();
-        res.send(bookings);
-      } catch (error) {
-        console.error("Error fetching bookings:", error);
-        res
-          .status(500)
-          .json({ success: false, message: "Failed to fetch bookings" });
       }
     });
 
