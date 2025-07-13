@@ -4,10 +4,12 @@ const dotenv = require("dotenv");
 const client = require("./config/db");
 const verifyToken = require("./middleware/verifyToken");
 const { ObjectId } = require("mongodb");
+const Stripe = require("stripe");
 
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 5000;
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 app.use(
   cors({
@@ -26,6 +28,7 @@ async function run() {
     const CourtCollection = db.collection("Courts");
     const CourtsBookingCollection = db.collection("CourtsBooking");
     const userCollection = db.collection("user");
+    const paymentsCollection = db.collection("payments");
 
     // Example route
     // Get all courts
@@ -36,6 +39,35 @@ async function run() {
       } catch (error) {
         console.error("Error fetching courts:", error);
         res.status(500).send({ error: "Failed to fetch court data" });
+      }
+    });
+
+    
+
+    // get user by email and show membershipDate
+    app.get("/users/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+
+        const user = await userCollection.findOne({ email });
+
+        if (!user) {
+          return res.status(404).json({
+            success: false,
+            message: "User not found",
+          });
+        }
+
+        res.send({
+          success: true,
+          user,
+        });
+      } catch (error) {
+        console.error("Error fetching user:", error);
+        res.status(500).json({
+          success: false,
+          message: "Internal server error",
+        });
       }
     });
 
@@ -63,25 +95,98 @@ async function run() {
     // pending data get by email
     app.get("/bookings", async (req, res) => {
       try {
-        const { email } = req.query;
+        const { email, status } = req.query;
+        const query = {};
 
-        if (!email) {
+        if (email) {
+          query.userEmail = email;
+          query.status = "pending"; // Only user's pending bookings
+        } else if (status) {
+          query.status = status; // For admin filtering like "pending", "approved", etc.
+        } else {
           return res
             .status(400)
-            .json({ success: false, message: "Email is required" });
+            .json({ success: false, message: "Email or status is required" });
         }
 
-        const bookings = await CourtsBookingCollection.find({
-          userEmail: email,
-          status: "pending",
-        }).toArray();
-
+        const bookings = await CourtsBookingCollection.find(query).toArray();
         res.send(bookings);
       } catch (error) {
         console.error("Error fetching bookings:", error);
         res
           .status(500)
           .json({ success: false, message: "Failed to fetch bookings" });
+      }
+    });
+
+    // payment info save
+    app.post("/payments/save", async (req, res) => {
+      try {
+        const paymentData = req.body;
+        paymentData.paidAt = new Date();
+
+        // Save to payments collection
+        const result = await paymentsCollection.insertOne(paymentData);
+
+        // Optional: update booking status to "confirmed"
+        await CourtsBookingCollection.updateOne(
+          { _id: new ObjectId(paymentData.bookingId) },
+          { $set: { status: "confirmed" } }
+        );
+
+        res.send({ success: true, message: "Payment recorded", result });
+      } catch (error) {
+        console.error("Error saving payment:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Payment save failed" });
+      }
+    });
+
+    app.get("/bookings/approved", async (req, res) => {
+      try {
+        const { email, status } = req.query;
+        const query = {};
+
+        if (email) {
+          query.userEmail = email;
+          query.status = "approved"; // Only user's approved bookings
+        } else if (status) {
+          query.status = status; // For admin filtering like "pending", "approved", etc.
+        } else {
+          return res
+            .status(400)
+            .json({ success: false, message: "Email or status is required" });
+        }
+
+        const bookings = await CourtsBookingCollection.find(query).toArray();
+        res.send(bookings);
+      } catch (error) {
+        console.error("Error fetching bookings:", error);
+        res
+          .status(500)
+          .json({ success: false, message: "Failed to fetch bookings" });
+      }
+    });
+
+    // payment get way
+    app.post("/payments/create-payment-intent", async (req, res) => {
+      const { totalPrice } = req.body;
+      const amount = totalPrice * 100;
+
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount,
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (err) {
+        console.error("Stripe Error:", err);
+        res.status(500).send({ error: err.message });
       }
     });
 
@@ -177,51 +282,82 @@ async function run() {
         .send({ success: true });
     });
 
-    // user booking approve
+    // user booking status will be approved and userRole will be member
     app.put("/bookings/approve/:id", async (req, res) => {
       try {
-        const id = req.params.id;
-        const result = await CourtsBookingCollection.updateOne(
-          { _id: new ObjectId(id) },
+        const bookingId = req.params.id;
+
+        // 1. Update booking status to "approved"
+        const bookingResult = await CourtsBookingCollection.updateOne(
+          { _id: new ObjectId(bookingId) },
           { $set: { status: "approved" } }
         );
 
-        if (result.modifiedCount > 0) {
-          res.send({ success: true, message: "Booking approved" });
-        } else {
-          res
-            .status(404)
-            .send({ success: false, message: "Booking not found" });
+        if (bookingResult.modifiedCount === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Booking not found or already approved",
+          });
         }
+
+        // 2. Find booking to get user email
+        const booking = await CourtsBookingCollection.findOne({
+          _id: new ObjectId(bookingId),
+        });
+
+        // 3. Promote user to "member" and set membershipDate if still "user"
+        if (booking?.userEmail) {
+          await userCollection.updateOne(
+            { email: booking.userEmail, userRole: "user" },
+            {
+              $set: {
+                membershipDate: new Date(),
+                userRole: "member",
+              },
+            }
+          );
+        }
+
+        res.status(200).json({
+          success: true,
+          message:
+            "Booking approved and user promoted to member with membership time",
+        });
       } catch (error) {
-        console.error("Approval error:", error);
-        res.status(500).send({ success: false, message: "Approval failed" });
+        console.error("Error approving booking:", error);
+        res.status(500).json({
+          success: false,
+          message: "Internal server error",
+        });
       }
     });
 
     // bookings delete
     app.delete("/bookings/:id", async (req, res) => {
       try {
-        const id = req.params.id;
+        const { id } = req.params;
+
         const result = await CourtsBookingCollection.deleteOne({
           _id: new ObjectId(id),
         });
 
         if (result.deletedCount > 0) {
-          res.send({
+          return res.status(200).json({
             success: true,
             message: "Booking cancelled successfully",
           });
         } else {
-          res
-            .status(404)
-            .send({ success: false, message: "Booking not found" });
+          return res.status(404).json({
+            success: false,
+            message: "Booking not found",
+          });
         }
       } catch (error) {
         console.error("Error deleting booking:", error);
-        res
-          .status(500)
-          .send({ success: false, message: "Failed to delete booking" });
+        return res.status(500).json({
+          success: false,
+          message: "Failed to delete booking",
+        });
       }
     });
 
