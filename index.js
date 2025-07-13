@@ -156,7 +156,26 @@ async function run() {
       }
     });
 
-    
+    // announcements get
+    app.get("/announcements", async (req, res) => {
+      try {
+        const announcements = await announcementsCollection
+          .find()
+          .sort({ createdAt: -1 }) // optional: newest first
+          .toArray();
+
+        res.status(200).json({
+          success: true,
+          announcements,
+        });
+      } catch (error) {
+        console.error("Error fetching announcements:", error.message);
+        res.status(500).json({
+          success: false,
+          message: "Server error while fetching announcements",
+        });
+      }
+    });
 
     // apply coupon code
     app.get("/coupons/validate", async (req, res) => {
