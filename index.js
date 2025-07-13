@@ -238,12 +238,9 @@ async function run() {
     // all user get
     app.get("/users", async (req, res) => {
       try {
-        const { role } = req.query;
-        const query = role ? { role } : {}; // Filter by role if provided
-        const users = await usersCollection.find(query).toArray();
+        const users = await userCollection.find().toArray();
         res.json(users);
       } catch (err) {
-        console.error("Error fetching users:", err);
         res
           .status(500)
           .json({ success: false, message: "Failed to fetch users" });
