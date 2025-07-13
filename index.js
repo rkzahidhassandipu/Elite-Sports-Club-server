@@ -31,6 +31,8 @@ async function run() {
     const CourtsBookingCollection = db.collection("CourtsBooking");
     const userCollection = db.collection("user");
     const paymentsCollection = db.collection("payments");
+    const couponsCollection = db.collection("Coupon");
+    const announcementsCollection = db.collection("announcements");
 
     // Example route
     // Get all courts
@@ -139,6 +141,10 @@ async function run() {
         const coupon = await couponsCollection.findOne({
           code: code.toUpperCase(),
           isActive: true,
+          $or: [
+            { expiresAt: { $exists: false } }, // no expiry = lifetime
+            { expiresAt: { $gt: new Date() } }, // not expired yet
+          ],
         });
 
         if (!coupon) {
@@ -363,7 +369,6 @@ async function run() {
         });
       }
     });
-    
 
     // create user info
     app.post("/users", async (req, res) => {
