@@ -46,6 +46,91 @@ async function run() {
       }
     });
 
+    //coupons code get
+    app.get("/coupons", async (req, res) => {
+      try {
+        const coupons = await couponsCollection
+          .find()
+          .sort({ createdAt: -1 }) // Newest first
+          .toArray();
+
+        res.status(200).json(coupons); // Returning array directly
+      } catch (error) {
+        console.error("Error fetching coupons:", error.message);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch coupons",
+        });
+      }
+    });
+
+    // coupons updated
+    app.patch("/coupons/:id", async (req, res) => {
+      const id = req.params.id;
+      const { code, name, discount } = req.body;
+
+      if (!code || !name || typeof discount !== "number") {
+        return res.status(400).json({
+          success: false,
+          message: "Code, name, and discount are required.",
+        });
+      }
+
+      try {
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            code,
+            name,
+            discount,
+            updatedAt: new Date(),
+          },
+        };
+
+        const result = await couponsCollection.updateOne(filter, updateDoc);
+
+        res.status(200).json({
+          success: true,
+          modifiedCount: result.modifiedCount,
+        });
+      } catch (error) {
+        console.error("Error updating coupon:", error.message);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update coupon",
+        });
+      }
+    });
+
+    app.delete("/coupons/:id", async (req, res) => {
+      const id = req.params.id;
+
+      try {
+        const result = await couponsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        if (result.deletedCount > 0) {
+          res.status(200).json({
+            success: true,
+            message: "Coupon deleted successfully",
+            deletedCount: result.deletedCount,
+          });
+        } else {
+          res.status(404).json({
+            success: false,
+            message: "Coupon not found",
+          });
+        }
+      } catch (error) {
+        console.error("Error deleting coupon:", error.message);
+        res.status(500).json({
+          success: false,
+          message: "Failed to delete coupon",
+        });
+      }
+    });
+
     // get api by id
     app.get("/bookings/:id", async (req, res) => {
       try {
@@ -177,6 +262,70 @@ async function run() {
       }
     });
 
+    // announcements update
+    app.patch("/announcements/:id", async (req, res) => {
+      const id = req.params.id;
+      const { title, message, updatedAt } = req.body;
+
+      try {
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            title,
+            message,
+            updatedAt: updatedAt || new Date(),
+          },
+        };
+
+        const result = await announcementsCollection.updateOne(
+          filter,
+          updateDoc
+        );
+
+        res.status(200).json({
+          success: true,
+          message: "Announcement updated successfully",
+          modifiedCount: result.modifiedCount,
+        });
+      } catch (error) {
+        console.error("Error updating announcement:", error.message);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update announcement",
+        });
+      }
+    });
+
+    // announcements delete
+    app.delete("/announcements/:id", async (req, res) => {
+      const id = req.params.id;
+
+      try {
+        const result = await announcementsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        if (result.deletedCount > 0) {
+          res.status(200).json({
+            success: true,
+            message: "Announcement deleted successfully",
+            deletedCount: result.deletedCount,
+          });
+        } else {
+          res.status(404).json({
+            success: false,
+            message: "Announcement not found",
+          });
+        }
+      } catch (error) {
+        console.error("Error deleting announcement:", error.message);
+        res.status(500).json({
+          success: false,
+          message: "Failed to delete announcement",
+        });
+      }
+    });
+
     // apply coupon code
     app.get("/coupons/validate", async (req, res) => {
       try {
@@ -247,22 +396,21 @@ async function run() {
       }
     });
 
-
-    // get members 
+    // get members
     app.get("/members", async (req, res) => {
       try {
         const { name } = req.query;
         let query = {
-          userRole: "member"
+          userRole: "member",
         };
 
-        if(name){
+        if (name) {
           query.name = { $regex: name, $options: "i" };
         }
 
-        const users = await userCollection.find(query).toArray()
+        const users = await userCollection.find(query).toArray();
 
-        res.send(users)
+        res.send(users);
 
         // const bookingEmails = await userCollection.distinct(
         //   "userEmail",
@@ -281,17 +429,157 @@ async function run() {
       }
     });
 
-    // DELETE /users/:id
-app.delete("/users/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await usersCollection.deleteOne({ _id: new ObjectId(id) });
-    res.send({ success: result.deletedCount === 1 });
-  } catch (error) {
-    res.status(500).json({ success: false, error: "Failed to delete user" });
-  }
-});
+    // POST new court
+    app.post("/create/courts", async (req, res) => {
+      try {
+        const court = req.body;
 
+        // Validate required fields
+        if (
+          !court.name ||
+          !court.type ||
+          !court.image ||
+          !court.price ||
+          !court.slots
+        ) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Missing required fields" });
+        }
+
+        // Ensure slots is an array
+        if (!Array.isArray(court.slots)) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Slots must be an array" });
+        }
+
+        // Set createdAt
+        court.createdAt = new Date();
+
+        const result = await CourtCollection.insertOne(court);
+
+        if (result.insertedId) {
+          res.json({ success: true, insertedId: result.insertedId });
+        } else {
+          res
+            .status(500)
+            .json({ success: false, message: "Failed to insert court" });
+        }
+      } catch (error) {
+        console.error("Error inserting court:", error);
+        res
+          .status(500)
+          .json({ success: false, message: "Internal server error" });
+      }
+    });
+
+    app.post("/coupons", async (req, res) => {
+      const { code, name, discount } = req.body;
+
+      if (!code || !name || typeof discount !== "number") {
+        return res.status(400).json({
+          success: false,
+          message: "Code, name, and discount are required.",
+        });
+      }
+
+      const newCoupon = {
+        code,
+        name,
+        discount,
+        createdAt: new Date(),
+      };
+
+      try {
+        const result = await couponsCollection.insertOne(newCoupon);
+        res.status(201).json({
+          success: true,
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Error adding coupon:", error.message);
+        res.status(500).json({
+          success: false,
+          message: "Failed to add coupon",
+        });
+      }
+    });
+
+    // Update court by ID and set update timestamp
+    app.patch("/update/courts/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Invalid court ID" });
+        }
+
+        const updatedCourt = {
+          ...req.body,
+          updatedAt: new Date().toISOString(),
+        };
+
+        const result = await CourtCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedCourt }
+        );
+
+        if (result.modifiedCount === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Court not found or data unchanged",
+          });
+        }
+
+        res.json({
+          success: true,
+          message: "Court updated successfully",
+          result,
+        });
+      } catch (error) {
+        console.error("Error updating court:", error);
+        res
+          .status(500)
+          .json({ success: false, message: "Failed to update court" });
+      }
+    });
+
+    // DELETE court
+    // Delete court by ID
+    app.delete("/courts/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        const result = await courtsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting court:", error);
+        res
+          .status(500)
+          .json({ success: false, message: "Failed to delete court" });
+      }
+    });
+
+    // DELETE /users/:id
+    app.delete("/users/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const result = await userCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send({ success: result.deletedCount === 1 });
+      } catch (error) {
+        res
+          .status(500)
+          .json({ success: false, error: "Failed to delete user" });
+      }
+    });
 
     // pending data get by email
     app.get("/bookings", async (req, res) => {
@@ -385,6 +673,25 @@ app.delete("/users/:id", async (req, res) => {
 
         const confirmedBookings = await CourtsBookingCollection.find({
           userEmail: email,
+          status: "confirmed",
+        }).toArray();
+
+        res.status(200).json({
+          success: true,
+          bookings: confirmedBookings,
+        });
+      } catch (error) {
+        console.error("Error fetching confirmed bookings:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch confirmed bookings",
+        });
+      }
+    });
+
+    app.get("/admin/confirmed/bookings", async (req, res) => {
+      try {
+        const confirmedBookings = await CourtsBookingCollection.find({
           status: "confirmed",
         }).toArray();
 
