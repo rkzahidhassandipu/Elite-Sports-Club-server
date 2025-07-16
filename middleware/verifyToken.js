@@ -1,22 +1,19 @@
 const jwt = require("jsonwebtoken");
-require("dotenv").config(); // Load JWT_SECRET from .env
+require("dotenv").config();
 
 const verifyToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  const token = req.cookies.token;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Unauthorized access" });
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized access. No token provided." });
   }
 
-  const token = authHeader.split(" ")[1];
-
-  // 🔑 Use JWT_SECRET key here to verify the token
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
       return res.status(403).json({ error: "Invalid or expired token" });
     }
 
-    req.user = decoded; // Attach decoded payload to the request
+    req.user = decoded;
     next();
   });
 };

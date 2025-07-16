@@ -3,19 +3,23 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const client = require("./config/db");
 const verifyToken = require("./middleware/verifyToken");
+const verifyAdmin = require("./middleware/verifyAdmin");
 const { ObjectId } = require("mongodb");
 const Stripe = require("stripe");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+const cookieParser = require("cookie-parser");
 
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 5000;
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
+app.use(cookieParser());
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173", "https://assignment-12-a57a1.web.app"],
     credentials: true,
   })
 );
@@ -47,7 +51,7 @@ async function run() {
     });
 
     //coupons code get
-    app.get("/coupons", async (req, res) => {
+    app.get("/coupon", async (req, res) => {
       try {
         const coupons = await couponsCollection
           .find()
@@ -65,7 +69,7 @@ async function run() {
     });
 
     // coupons updated
-    app.patch("/coupons/:id", async (req, res) => {
+    app.patch("/coupons/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const { code, name, discount } = req.body;
 
@@ -102,7 +106,7 @@ async function run() {
       }
     });
 
-    app.delete("/coupons/:id", async (req, res) => {
+    app.delete("/coupons/:id", verifyToken, verifyAdmin,  async (req, res) => {
       const id = req.params.id;
 
       try {
@@ -132,7 +136,7 @@ async function run() {
     });
 
     // get api by id
-    app.get("/bookings/:id", async (req, res) => {
+    app.get("/bookings/:id", verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
 
@@ -162,7 +166,7 @@ async function run() {
     });
 
     // get payments history
-    app.get("/payments", async (req, res) => {
+    app.get("/payments", verifyToken, async (req, res) => {
       try {
         const { email } = req.query;
 
@@ -187,7 +191,7 @@ async function run() {
     });
 
     // get user by email and show membershipDate
-    app.get("/users/:email", async (req, res) => {
+    app.get("/users/:email", verifyToken, async (req, res) => {
       try {
         const email = req.params.email;
 
@@ -214,7 +218,7 @@ async function run() {
     });
 
     // announcements post admin
-    app.post("/announcements", async (req, res) => {
+    app.post("/announcements", verifyToken, verifyAdmin, async (req, res) => {
       try {
         const announcement = req.body;
 
@@ -242,7 +246,7 @@ async function run() {
     });
 
     // announcements get
-    app.get("/announcements", async (req, res) => {
+    app.get("/announcements",  async (req, res) => {
       try {
         const announcements = await announcementsCollection
           .find()
@@ -263,7 +267,7 @@ async function run() {
     });
 
     // announcements update
-    app.patch("/announcements/:id", async (req, res) => {
+    app.patch("/announcements/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const { title, message, updatedAt } = req.body;
 
@@ -297,7 +301,7 @@ async function run() {
     });
 
     // announcements delete
-    app.delete("/announcements/:id", async (req, res) => {
+    app.delete("/announcements/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
 
       try {
@@ -327,7 +331,7 @@ async function run() {
     });
 
     // apply coupon code
-    app.get("/coupons/validate", async (req, res) => {
+    app.get("/coupons/validate", verifyToken, async (req, res) => {
       try {
         const { code } = req.query;
         if (!code) {
@@ -363,6 +367,61 @@ async function run() {
       }
     });
 
+    // all user get
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
+      try {
+        const users = await userCollection.find().toArray();
+        res.json(users);
+      } catch (err) {
+        res
+          .status(500)
+          .json({ success: false, message: "Failed to fetch users" });
+      }
+    });
+
+    app.get("/exists/users", async (req, res) => {
+      try {
+        const email = req.query.email;
+
+        if (!email) {
+          return res.status(400).send({ error: "Email is required" });
+        }
+
+        const user = await userCollection.findOne({ email });
+        res.send(user || {}); // Return empty object if not found
+      } catch (error) {
+        console.error("GET /users error:", error);
+        res.status(500).send({ error: "Failed to fetch user" });
+      }
+    });
+
+    // Save User if Not Exists
+    app.post("/empty/users", async (req, res) => {
+      try {
+        const user = req.body;
+
+        // Check required fields
+        if (!user.name || !user.email) {
+          return res.status(400).send({ error: "Name and email are required" });
+        }
+
+        // Check if user already exists
+        const existingUser = await userCollection.findOne({
+          email: user.email,
+        });
+        if (existingUser) {
+          return res.status(409).send({ error: "User already exists" });
+        }
+
+        // Save new user
+        const result = await userCollection.insertOne(user);
+        res.send(result);
+      } catch (error) {
+        console.error("POST /users error:", error);
+        res.status(500).send({ error: "Failed to save user" });
+      }
+    });
+
     // get userRle
     app.get("/users/role/:email", async (req, res) => {
       try {
@@ -381,18 +440,6 @@ async function run() {
         res
           .status(500)
           .send({ success: false, message: "Failed to get user role" });
-      }
-    });
-
-    // all user get
-    app.get("/users", async (req, res) => {
-      try {
-        const users = await userCollection.find().toArray();
-        res.json(users);
-      } catch (err) {
-        res
-          .status(500)
-          .json({ success: false, message: "Failed to fetch users" });
       }
     });
 
@@ -430,7 +477,7 @@ async function run() {
     });
 
     // POST new court
-    app.post("/create/courts", async (req, res) => {
+    app.post("/create/courts", verifyToken, verifyAdmin, async (req, res) => {
       try {
         const court = req.body;
 
@@ -474,7 +521,7 @@ async function run() {
       }
     });
 
-    app.post("/coupons", async (req, res) => {
+    app.post("/coupons", verifyToken, verifyAdmin, async (req, res) => {
       const { code, name, discount } = req.body;
 
       if (!code || !name || typeof discount !== "number") {
@@ -507,7 +554,7 @@ async function run() {
     });
 
     // Update court by ID and set update timestamp
-    app.patch("/update/courts/:id", async (req, res) => {
+    app.patch("/update/courts/:id", verifyToken, verifyAdmin, async (req, res) => {
       try {
         const { id } = req.params;
 
@@ -547,13 +594,12 @@ async function run() {
       }
     });
 
-    // DELETE court
     // Delete court by ID
-    app.delete("/courts/:id", async (req, res) => {
+    app.delete("/courts/:id", verifyToken, verifyAdmin, async (req, res) => {
       try {
         const { id } = req.params;
 
-        const result = await courtsCollection.deleteOne({
+        const result = await CourtCollection.deleteOne({
           _id: new ObjectId(id),
         });
 
@@ -567,7 +613,7 @@ async function run() {
     });
 
     // DELETE /users/:id
-    app.delete("/users/:id", async (req, res) => {
+    app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
       try {
         const { id } = req.params;
         const result = await userCollection.deleteOne({
@@ -582,7 +628,7 @@ async function run() {
     });
 
     // pending data get by email
-    app.get("/bookings", async (req, res) => {
+    app.get("/bookings", verifyToken, async (req, res) => {
       try {
         const { email, status } = req.query;
         const query = {};
@@ -609,7 +655,7 @@ async function run() {
     });
 
     // payment info save
-    app.post("/payments/save", async (req, res) => {
+    app.post("/payments/save", verifyToken, async (req, res) => {
       try {
         const paymentData = req.body;
         paymentData.paidAt = new Date();
@@ -633,7 +679,7 @@ async function run() {
     });
 
     // payment status approved
-    app.get("/approved", async (req, res) => {
+    app.get("/approved", verifyToken, async (req, res) => {
       try {
         const { email, status } = req.query;
         const query = {};
@@ -660,7 +706,7 @@ async function run() {
     });
 
     //  confirmed
-    app.get("/booking/confirmed", async (req, res) => {
+    app.get("/booking/confirmed", verifyToken, async (req, res) => {
       try {
         const { email } = req.query;
 
@@ -689,7 +735,7 @@ async function run() {
       }
     });
 
-    app.get("/admin/confirmed/bookings", async (req, res) => {
+    app.get("/admin/confirmed/bookings", verifyToken, verifyAdmin, async (req, res) => {
       try {
         const confirmedBookings = await CourtsBookingCollection.find({
           status: "confirmed",
@@ -730,7 +776,7 @@ async function run() {
     });
 
     // all booking data save db
-    app.post("/bookings", async (req, res) => {
+    app.post("/bookings", verifyToken, verifyAdmin, async (req, res) => {
       try {
         const booking = req.body;
         console.log("Received booking:", booking);
@@ -787,7 +833,7 @@ async function run() {
     });
 
     // create user info
-    app.post("/users", async (req, res) => {
+    app.post("/users", verifyToken, verifyAdmin, async (req, res) => {
       try {
         const user = req.body;
 
@@ -810,23 +856,8 @@ async function run() {
       }
     });
 
-    // POST /jwt or /login
-    app.post("/jwt", (req, res) => {
-      const user = req.body;
-      const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "7d" });
-
-      res
-        .cookie("access-token", token, {
-          httpOnly: true, // Secure against XSS
-          secure: process.env.NODE_ENV === "production", // Only send on HTTPS in production
-          sameSite: "Strict", // or 'Lax'
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        })
-        .send({ success: true });
-    });
-
     // user booking status will be approved and userRole will be member
-    app.put("/bookings/approve/:id", async (req, res) => {
+    app.put("/bookings/approve/:id", verifyToken, async (req, res) => {
       try {
         const bookingId = req.params.id;
 
@@ -876,7 +907,7 @@ async function run() {
     });
 
     // booking confirm status updated api
-    app.patch("/bookings/confirm/:id", async (req, res) => {
+    app.patch("/bookings/confirm/:id", verifyToken, verifyAdmin, async (req, res) => {
       try {
         const id = req.params.id;
         const { transactionId } = req.body;
@@ -909,7 +940,7 @@ async function run() {
     });
 
     // bookings delete
-    app.delete("/bookings/:id", async (req, res) => {
+    app.delete("/bookings/:id", verifyToken, verifyAdmin, async (req, res) => {
       try {
         const { id } = req.params;
 
@@ -935,6 +966,55 @@ async function run() {
           message: "Failed to delete booking",
         });
       }
+    });
+
+
+     // POST /jwt or /login
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+      res
+        .cookie("access-token", token, {
+          httpOnly: true, // Secure against XSS
+          secure: process.env.NODE_ENV === "production", // Only send on HTTPS in production
+          sameSite: "Strict", // or 'Lax'
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        })
+        .send({ success: true });
+    });
+
+    app.post("/login", async (req, res) => {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      // Create JWT token
+      const token = jwt.sign({ email }, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+      });
+
+      // Set HttpOnly cookie
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production", // https only in production
+          sameSite: "strict", // protect against CSRF
+          maxAge: 24 * 60 * 60 * 1000, // 1 day
+        })
+        .json({ message: "Login successful" });
+    });
+
+    app.get("/logout", (req, res) => {
+      res
+        .clearCookie("token", {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+        })
+        .json({ message: "Logged out" });
     });
 
     console.log("✅ MongoDB connected");
