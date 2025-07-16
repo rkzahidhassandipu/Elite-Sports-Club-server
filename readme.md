@@ -20,15 +20,14 @@ This is the backend server for the **Elite Sports Club** platform, built with **
 
 ## 📁 Project Structure
 
-├── controllers/
-├── middleware/
-├── models/
-├── routes/
-├── utils/
-├── .env
-├── server.js
-└── package.json
-
+├── controllers/        # Route handler logic <br />
+├── middleware/         # Auth, error handling, etc.<br />
+├── models/             # Mongoose schemas<br />
+├── routes/             # Express route definitions<br />
+├── utils/              # Helper functions<br />
+├── .env                # Environment variables<br />
+├── server.js           # Entry point of the app<br />
+└── package.json        # Project metadata and scripts
 
 ---
 
@@ -80,6 +79,8 @@ GET	/bookings	Get user bookings
 PATCH	/bookings/:id/approve	Approve booking (admin)
 POST	/create-payment-intent	Stripe Payment Intent
 GET	/announcements	Get all announcements
+
+
 🛡️ Middleware
 
     verifyToken – Authenticates user from cookie-based JWT
