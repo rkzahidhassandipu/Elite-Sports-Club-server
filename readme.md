@@ -40,7 +40,7 @@ This is the backend server for the **Elite Sports Club** platform, built with **
 git clone https://github.com/Programming-Hero-Web-Course4/b11a12-server-side-rkzahidhassandipu.git
 cd b11a12-server-side-rkzahidhassandipu
 
-
+```
 2. Install dependencies
 
 npm install
@@ -103,11 +103,14 @@ This project is part of the Programming Hero Web Development Course. Educational
 
 ## 👨‍💻 Author
 
+## 👨‍💻 Author
+
 **Raihan Uddin (RK Zahid Hassan Dipu)**  
 📧 Email: [rkrazzakhan01731@gmail.com](mailto:rkrazzakhan01731@gmail.com)  
-🌐 Portfolio: [https://meek-meerkat-1edcac.netlify.app](https://meek-meerkat-1edcac.netlify.app)  
-🔗 GitHub: [https://github.com/rkzahidhassandipu](https://github.com/rkzahidhassandipu)  
-📹 YouTube: [https://www.youtube.com/@WebCodeTutorials-](https://www.youtube.com/@WebCodeTutorials-)
+🌐 [Portfolio](https://meek-meerkat-1edcac.netlify.app)  
+🔗 [GitHub](https://github.com/rkzahidhassandipu)  
+📹 [YouTube](https://www.youtube.com/@WebCodeTutorials-)
+
 
 
 
