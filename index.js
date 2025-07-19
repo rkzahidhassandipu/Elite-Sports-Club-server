@@ -27,7 +27,7 @@ app.use(express.json());
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     const db = client.db("assignment12");
     const itemsCollection = db.collection("Products");
@@ -69,7 +69,7 @@ async function run() {
     });
 
     // coupons updated
-    app.patch("/coupons/:id", verifyToken, verifyAdmin, async (req, res) => {
+    app.patch("/coupons/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const { code, name, discount } = req.body;
 
@@ -106,7 +106,7 @@ async function run() {
       }
     });
 
-    app.delete("/coupons/:id", verifyToken, verifyAdmin,  async (req, res) => {
+    app.delete("/coupons/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
 
       try {
@@ -218,7 +218,7 @@ async function run() {
     });
 
     // announcements post admin
-    app.post("/announcements", verifyToken, verifyAdmin, async (req, res) => {
+    app.post("/announcements", verifyToken, async (req, res) => {
       try {
         const announcement = req.body;
 
@@ -246,7 +246,7 @@ async function run() {
     });
 
     // announcements get
-    app.get("/announcements",  async (req, res) => {
+    app.get("/announcements", async (req, res) => {
       try {
         const announcements = await announcementsCollection
           .find()
@@ -267,7 +267,7 @@ async function run() {
     });
 
     // announcements update
-    app.patch("/announcements/:id", verifyToken, verifyAdmin, async (req, res) => {
+    app.patch("/announcements/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const { title, message, updatedAt } = req.body;
 
@@ -301,7 +301,7 @@ async function run() {
     });
 
     // announcements delete
-    app.delete("/announcements/:id", verifyToken, verifyAdmin, async (req, res) => {
+    app.delete("/announcements/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
 
       try {
@@ -368,7 +368,7 @@ async function run() {
     });
 
     // all user get
-    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
+    app.get("/users", verifyToken, async (req, res) => {
       try {
         const users = await userCollection.find().toArray();
         res.json(users);
@@ -477,7 +477,7 @@ async function run() {
     });
 
     // POST new court
-    app.post("/create/courts", verifyToken, verifyAdmin, async (req, res) => {
+    app.post("/create/courts", verifyToken, async (req, res) => {
       try {
         const court = req.body;
 
@@ -521,7 +521,7 @@ async function run() {
       }
     });
 
-    app.post("/coupons", verifyToken, verifyAdmin, async (req, res) => {
+    app.post("/coupons", verifyToken, async (req, res) => {
       const { code, name, discount } = req.body;
 
       if (!code || !name || typeof discount !== "number") {
@@ -554,7 +554,7 @@ async function run() {
     });
 
     // Update court by ID and set update timestamp
-    app.patch("/update/courts/:id", verifyToken, verifyAdmin, async (req, res) => {
+    app.patch("/update/courts/:id", verifyToken, async (req, res) => {
       try {
         const { id } = req.params;
 
@@ -595,7 +595,7 @@ async function run() {
     });
 
     // Delete court by ID
-    app.delete("/courts/:id", verifyToken, verifyAdmin, async (req, res) => {
+    app.delete("/courts/:id", verifyToken, async (req, res) => {
       try {
         const { id } = req.params;
 
@@ -613,7 +613,7 @@ async function run() {
     });
 
     // DELETE /users/:id
-    app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
+    app.delete("/users/:id", verifyToken, async (req, res) => {
       try {
         const { id } = req.params;
         const result = await userCollection.deleteOne({
@@ -735,7 +735,7 @@ async function run() {
       }
     });
 
-    app.get("/admin/confirmed/bookings", verifyToken, verifyAdmin, async (req, res) => {
+    app.get("/admin/confirmed/bookings", verifyToken, async (req, res) => {
       try {
         const confirmedBookings = await CourtsBookingCollection.find({
           status: "confirmed",
@@ -776,7 +776,7 @@ async function run() {
     });
 
     // all booking data save db
-    app.post("/bookings", verifyToken, verifyAdmin, async (req, res) => {
+    app.post("/bookings", verifyToken, async (req, res) => {
       try {
         const booking = req.body;
         console.log("Received booking:", booking);
@@ -833,7 +833,7 @@ async function run() {
     });
 
     // create user info
-    app.post("/users", verifyToken, verifyAdmin, async (req, res) => {
+    app.post("/users", verifyToken, async (req, res) => {
       try {
         const user = req.body;
 
@@ -907,7 +907,7 @@ async function run() {
     });
 
     // booking confirm status updated api
-    app.patch("/bookings/confirm/:id", verifyToken, verifyAdmin, async (req, res) => {
+    app.patch("/bookings/confirm/:id", verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
         const { transactionId } = req.body;
@@ -940,7 +940,7 @@ async function run() {
     });
 
     // bookings delete
-    app.delete("/bookings/:id", verifyToken, verifyAdmin, async (req, res) => {
+    app.delete("/bookings/:id", verifyToken, async (req, res) => {
       try {
         const { id } = req.params;
 
@@ -968,18 +968,16 @@ async function run() {
       }
     });
 
-
-     // POST /jwt or /login
+    // POST /jwt or /login
     app.post("/jwt", (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "7d" });
 
       res
-        .cookie("access-token", token, {
-          httpOnly: true, // Secure against XSS
-          secure: process.env.NODE_ENV === "production", // Only send on HTTPS in production
-          sameSite: "Strict", // or 'Lax'
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         })
         .send({ success: true });
     });

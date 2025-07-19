@@ -1,8 +1,13 @@
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+const cookieParser = require("cookie-parser");
+
 
 const verifyToken = (req, res, next) => {
-  const token = req.cookies.token;
+  const token = req.cookies["token"];
+
+console.log("cookie", req.cookies);
+  console.log("token", token); 
 
   if (!token) {
     return res.status(401).json({ error: "Unauthorized access. No token provided." });
